@@ -1,0 +1,8 @@
+{
+  "id": "safelight-image-info",
+  "name": "Image Information",
+  "version": "1.0.0",
+  "description": "Extended image info panel — camera orientation indicator, AF point overlay, shooting info. Inspired by Nikon NX Studio's Image Information panel.",
+  "author": "OPGERUIMD97",
+  "main": "dist/index.js"
+}
