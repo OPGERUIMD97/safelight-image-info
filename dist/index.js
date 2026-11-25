@@ -65,14 +65,7 @@ export function activate(api) {
       fontVariantNumeric: "tabular-nums",
       overflowWrap: "anywhere",
     },
-    note: {
-      color: muted,
-      fontSize: 10,
-      textAlign: "center",
-      padding: "8px 0",
-      fontStyle: "italic",
-    },
-  };
+};
 
   const blank = (value) => value == null || value === "" || value === "—";
 
@@ -103,10 +96,10 @@ export function activate(api) {
   function Orientation({ rotation }) {
     const rot = [0, 90, 180, 270].includes(rotation) ? rotation : 0;
     const labels = {
-      0: ["Liggend", "Standaard richting"],
-      90: ["Portret links", "90° gedraaid"],
-      180: ["Liggend", "180° gedraaid"],
-      270: ["Portret rechts", "270° gedraaid"],
+      0: ["Landscape", "Normal orientation"],
+      90: ["Portrait left", "Rotated 90°"],
+      180: ["Landscape", "Rotated 180°"],
+      270: ["Portrait right", "Rotated 270°"],
     };
     const [title, detail] = labels[rot];
     return React.createElement("div", {
@@ -172,7 +165,7 @@ export function activate(api) {
     if (blank(value)) return null;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
-    return date.toLocaleString("nl-NL", {
+    return date.toLocaleString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -239,7 +232,7 @@ export function activate(api) {
 
     if (!photo) {
       return React.createElement("div", { style: { ...S.container, ...S.empty } },
-        "Geen foto geselecteerd");
+        "No photo selected");
     }
 
     const exif = photo.exif || {};
@@ -254,7 +247,7 @@ export function activate(api) {
       ? focal35
       : (crop !== 1 && Number.isFinite(focal) && focal > 0 ? Math.round(focal * crop) : null);
     const focalText = Number.isFinite(focal) && focal > 0
-      ? (equivalent && equivalent !== focal ? `${focal} mm (${equivalent} mm kleinbeeld)` : `${focal} mm`)
+      ? (equivalent && equivalent !== focal ? `${focal} mm (${equivalent} mm equiv.)` : `${focal} mm`)
       : null;
     const aperture = blank(exif.aperture) ? null : `f/${exif.aperture}`;
     const shutter = textOf(exif, ["shutterSpeed"]) || formatShutter(exif.shutter);
@@ -269,44 +262,44 @@ export function activate(api) {
       ? (focusDistance >= 1 ? `${focusDistance} m` : `${Math.round(focusDistance * 100)} cm`)
       : null;
     const maxAperture = exif.maxAperture;
-    const nikon = /nikon|\.nef\b/i.test(`${make || ""} ${model || ""} ${photo.mimeType || ""} ${photo.filename || ""}`);
+    const afMode = textOf(exif, ["focusMode", "FocusMode", "AFMode", "afMode", "AFAreaMode", "afAreaMode"]);
 
     return React.createElement("div", { style: S.container },
       summary ? React.createElement("div", { style: S.summary }, summary) : null,
 
-      React.createElement(Section, { title: "Camerastand" },
+      React.createElement(Section, { title: "Orientation" },
         React.createElement(Orientation, { rotation: Number(photo.rotation) || 0 }),
       ),
 
       React.createElement(Section, { title: "Camera" },
-        React.createElement(Row, { label: "Merk", value: make }),
+        React.createElement(Row, { label: "Make", value: make }),
         React.createElement(Row, { label: "Model", value: model, accent: true }),
         React.createElement(Row, { label: "Software", value: textOf(exif, ["software", "Software"]) }),
       ),
 
-      React.createElement(Section, { title: "Belichting" },
-        React.createElement(Row, { label: "Sluitertijd", value: shutter, accent: true }),
-        React.createElement(Row, { label: "Diafragma", value: aperture, accent: true }),
+      React.createElement(Section, { title: "Exposure" },
+        React.createElement(Row, { label: "Shutter", value: shutter, accent: true }),
+        React.createElement(Row, { label: "Aperture", value: aperture, accent: true }),
         React.createElement(Row, { label: "ISO", value: iso, accent: true }),
-        React.createElement(Row, { label: "Belichting +/-", value: formatEv(exif.exposureCompensation) }),
-        React.createElement(Row, { label: "Meting", value: textOf(exif, ["meteringMode", "MeteringMode"]) }),
+        React.createElement(Row, { label: "Exposure comp.", value: formatEv(exif.exposureCompensation) }),
+        React.createElement(Row, { label: "Metering", value: textOf(exif, ["meteringMode", "MeteringMode"]) }),
         React.createElement(Row, {
-          label: "Programma",
+          label: "Program",
           value: named(exif.exposureProgram, {
-            0: "Niet gedefinieerd",
-            1: "Handmatig",
-            2: "Programma",
-            3: "Diafragmavoorkeur",
-            4: "Sluitertijdvoorkeur",
+            0: "Not defined",
+            1: "Manual",
+            2: "Program",
+            3: "Aperture priority",
+            4: "Shutter priority",
             5: "Creative",
             6: "Action",
-            7: "Portret",
-            8: "Landschap",
+            7: "Portrait",
+            8: "Landscape",
           }),
         }),
-        React.createElement(Row, { label: "Flits", value: textOf(exif, ["flash", "Flash"]) }),
-        React.createElement(Row, { label: "Witbalans", value: textOf(exif, ["whiteBalance"]) }),
-        React.createElement(Row, { label: "Belichtingsmodus", value: textOf(exif, ["exposureMode"]) }),
+        React.createElement(Row, { label: "Flash", value: textOf(exif, ["flash", "Flash"]) }),
+        React.createElement(Row, { label: "White balance", value: textOf(exif, ["whiteBalance"]) }),
+        React.createElement(Row, { label: "Exposure mode", value: textOf(exif, ["exposureMode"]) }),
       ),
 
       React.createElement(Section, { title: "Lens" },
@@ -315,48 +308,27 @@ export function activate(api) {
           value: textOf(exif, ["lensModel", "lens", "LensModel", "Lens"]),
           accent: true,
         }),
-        React.createElement(Row, { label: "Brandpunt", value: focalText }),
-        crop === 1 ? null : React.createElement(Row, { label: "Cropfactor", value: `${crop}×` }),
+        React.createElement(Row, { label: "Focal length", value: focalText }),
+        crop === 1 ? null : React.createElement(Row, { label: "Crop factor", value: `${crop}×` }),
         React.createElement(Row, {
-          label: "Min. diafragma",
+          label: "Max aperture",
           value: blank(maxAperture) ? null : `f/${maxAperture}`,
         }),
+        React.createElement(Row, { label: "Subject distance", value: focusText }),
       ),
 
-      focusText || nikon ? React.createElement(Section, { title: "Autofocus" },
-        React.createElement(Row, { label: "Onderwerpafstand", value: focusText }),
-        nikon ? React.createElement("div", { style: S.note },
-          "Safelight geeft de scherpstelpunten niet door. Die staan in de Nikon-makernote en zitten niet in de EXIF die een extensie ziet.") : null,
+      afMode ? React.createElement(Section, { title: "Autofocus" },
+        React.createElement(Row, { label: "AF mode", value: afMode }),
       ) : null,
 
-      React.createElement(Section, { title: "Bestand" },
-        React.createElement(Row, { label: "Bestandsnaam", value: photo.filename }),
+      React.createElement(Section, { title: "File" },
+        React.createElement(Row, { label: "Filename", value: photo.filename }),
         React.createElement(Row, { label: "Type", value: photo.mimeType }),
-        React.createElement(Row, { label: "Grootte", value: formatBytes(photo.fileSize) }),
-        React.createElement(Row, { label: "Afmetingen", value: dimensions }),
+        React.createElement(Row, { label: "Size", value: formatBytes(photo.fileSize) }),
+        React.createElement(Row, { label: "Dimensions", value: dimensions }),
         React.createElement(Row, { label: "Megapixels", value: megapixels, accent: true }),
-        React.createElement(Row, { label: "Opnamedatum", value: formatDate(photo.dateCreated) }),
-        React.createElement(Row, { label: "Geïmporteerd", value: formatDate(photo.dateImported) }),
-      ),
-
-      React.createElement(Section, { title: "Status" },
-        React.createElement(Row, {
-          label: "Beoordeling",
-          value: photo.rating ? "★".repeat(photo.rating) : null,
-          accent: true,
-        }),
-        React.createElement(Row, {
-          label: "Label",
-          value: photo.colorLabel && photo.colorLabel !== "none" ? photo.colorLabel : null,
-        }),
-        React.createElement(Row, {
-          label: "Vlag",
-          value: photo.flag && photo.flag !== "none" ? photo.flag : null,
-        }),
-        React.createElement(Row, {
-          label: "Trefwoorden",
-          value: Array.isArray(photo.keywords) && photo.keywords.length ? photo.keywords.join(", ") : null,
-        }),
+        React.createElement(Row, { label: "Captured", value: formatDate(photo.dateCreated) }),
+        React.createElement(Row, { label: "Imported", value: formatDate(photo.dateImported) }),
       ),
     );
   }

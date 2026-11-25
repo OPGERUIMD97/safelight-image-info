@@ -11,8 +11,7 @@ EXIF Plus is folded into this panel.
 - Shutter, aperture, ISO, exposure compensation, metering, program, flash and drive mode
 - Lens, focal length (with a 35 mm equivalent when the crop factor is known), and maximum aperture
 - Subject distance, when the file has it
-
-Safelight does not pass Nikon focus points through to an extension. They live in the maker note, and the app's EXIF object does not include them. The panel says so on a Nikon file.
+- AF mode, when Safelight includes it. The section stays hidden otherwise.
 - Filename, type, size, pixel dimensions, megapixels, capture date and import date
 - Rating, colour label, flag and keywords
 
