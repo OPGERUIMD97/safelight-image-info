@@ -11,7 +11,6 @@ export function activate(api) {
   const accent = "var(--color-accent)";
   const line = "var(--color-border-subtle)";
   const card = "var(--color-surface-3)";
-  const well = "var(--color-surface-0)";
 
   const S = {
     container: {
@@ -150,64 +149,6 @@ export function activate(api) {
     );
   }
 
-  function AFOverlay({ exif }) {
-    const primary = exif.PrimaryAFPoint ?? exif.primaryAFPoint;
-    const used = exif.AFPointsUsed ?? exif.afPointsUsed;
-    if (blank(primary) && blank(used)) {
-      return React.createElement("div", { style: S.note },
-        "Geen Nikon-scherpstelpunten in de EXIF.");
-    }
-
-    const cols = 7;
-    const rows = 6;
-    const cell = 9;
-    const gap = 2;
-    const width = cols * cell + (cols - 1) * gap;
-    const height = rows * cell + (rows - 1) * gap;
-    const points = [];
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        if (row === 2 && (col === 0 || col === 6)) continue;
-        const index = points.length + 1;
-        points.push({
-          index,
-          x: col * (cell + gap),
-          y: row * (cell + gap),
-          active: primary != null && String(primary).includes(String(index)),
-        });
-      }
-    }
-
-    return React.createElement("div", { style: { padding: "8px 0 2px" } },
-      React.createElement("div", {
-        style: {
-          background: well,
-          borderRadius: 4,
-          padding: 8,
-          display: "inline-block",
-          border: `1px solid ${line}`,
-        },
-      },
-        React.createElement("svg", { width, height },
-          points.map((point) => React.createElement("rect", {
-            key: point.index,
-            x: point.x,
-            y: point.y,
-            width: cell,
-            height: cell,
-            rx: 1,
-            fill: point.active ? accent : card,
-            stroke: point.active ? accent : muted,
-            strokeWidth: point.active ? 1.5 : 0.5,
-          })),
-        ),
-      ),
-      blank(primary) ? null : React.createElement("div", {
-        style: { color: muted, fontSize: 10, marginTop: 4 },
-      }, `Actief punt: ${primary}`),
-    );
-  }
-
   function formatShutter(value) {
     if (blank(value)) return null;
     const speed = Number(value);
@@ -302,27 +243,33 @@ export function activate(api) {
     }
 
     const exif = photo.exif || {};
-    const make = textOf(exif, ["make", "Make"]);
-    const model = textOf(exif, ["model", "Model"]);
-    const crop = cropFactor(make, model);
-    const focal = Number(exif.focalLength ?? exif.FocalLength);
+    const make = textOf(exif, ["cameraMake", "make", "Make"]);
+    const model = textOf(exif, ["cameraModel", "model", "Model"]);
+    const focal = Number(exif.focalLength);
+    const focal35 = Number(exif.focalLength35mm);
+    const crop = Number.isFinite(focal) && focal > 0 && Number.isFinite(focal35) && focal35 > 0
+      ? Math.round((focal35 / focal) * 10) / 10
+      : cropFactor(make, model);
+    const equivalent = Number.isFinite(focal35) && focal35 > 0
+      ? focal35
+      : (crop !== 1 && Number.isFinite(focal) && focal > 0 ? Math.round(focal * crop) : null);
     const focalText = Number.isFinite(focal) && focal > 0
-      ? (crop === 1 ? `${focal} mm` : `${focal} mm (${Math.round(focal * crop)} mm kleinbeeld)`)
+      ? (equivalent && equivalent !== focal ? `${focal} mm (${equivalent} mm kleinbeeld)` : `${focal} mm`)
       : null;
     const aperture = blank(exif.aperture) ? null : `f/${exif.aperture}`;
-    const shutter = formatShutter(exif.shutter);
+    const shutter = textOf(exif, ["shutterSpeed"]) || formatShutter(exif.shutter);
     const iso = blank(exif.iso) ? null : `ISO ${exif.iso}`;
     const summary = [aperture, shutter, iso].filter(Boolean).join("  ·  ");
     const width = Number(photo.width);
     const height = Number(photo.height);
     const dimensions = width > 0 && height > 0 ? `${grouped(width)} × ${grouped(height)} px` : null;
     const megapixels = width > 0 && height > 0 ? `${((width * height) / 1e6).toFixed(1)} MP` : null;
-    const focusDistance = Number(exif.FocusDistance ?? exif.focusDistance);
+    const focusDistance = Number(exif.subjectDistance);
     const focusText = Number.isFinite(focusDistance) && focusDistance > 0
-      ? (focusDistance >= 100 ? `${(focusDistance / 100).toFixed(1)} m` : `${focusDistance} cm`)
+      ? (focusDistance >= 1 ? `${focusDistance} m` : `${Math.round(focusDistance * 100)} cm`)
       : null;
-    const nikon = String(make || "").toUpperCase().includes("NIKON");
-    const maxAperture = exif.maxApertureValue ?? exif.MaxApertureValue;
+    const maxAperture = exif.maxAperture;
+    const nikon = /nikon|\.nef\b/i.test(`${make || ""} ${model || ""} ${photo.mimeType || ""} ${photo.filename || ""}`);
 
     return React.createElement("div", { style: S.container },
       summary ? React.createElement("div", { style: S.summary }, summary) : null,
@@ -358,16 +305,8 @@ export function activate(api) {
           }),
         }),
         React.createElement(Row, { label: "Flits", value: textOf(exif, ["flash", "Flash"]) }),
-        React.createElement(Row, {
-          label: "Opnamemodus",
-          value: named(exif.ShootingMode ?? exif.shootingMode, {
-            0: "Enkelbeeld",
-            1: "Continue laag",
-            2: "Continue hoog",
-            3: "Zelfontspanner",
-            4: "Afstandsbediening",
-          }),
-        }),
+        React.createElement(Row, { label: "Witbalans", value: textOf(exif, ["whiteBalance"]) }),
+        React.createElement(Row, { label: "Belichtingsmodus", value: textOf(exif, ["exposureMode"]) }),
       ),
 
       React.createElement(Section, { title: "Lens" },
@@ -384,18 +323,11 @@ export function activate(api) {
         }),
       ),
 
-      React.createElement(Section, { title: "Autofocus" },
-        React.createElement(Row, {
-          label: "AF-modus",
-          value: textOf(exif, ["FocusMode", "focusMode", "AFAreaMode", "afAreaMode"]),
-        }),
-        React.createElement(Row, { label: "Focusafstand", value: focusText }),
-        React.createElement(Row, {
-          label: "AF-status",
-          value: textOf(exif, ["AutoFocus", "autoFocus", "ContrastDetectAFInFocus"]),
-        }),
-        nikon ? React.createElement(AFOverlay, { exif }) : null,
-      ),
+      focusText || nikon ? React.createElement(Section, { title: "Autofocus" },
+        React.createElement(Row, { label: "Onderwerpafstand", value: focusText }),
+        nikon ? React.createElement("div", { style: S.note },
+          "Safelight geeft de scherpstelpunten niet door. Die staan in de Nikon-makernote en zitten niet in de EXIF die een extensie ziet.") : null,
+      ) : null,
 
       React.createElement(Section, { title: "Bestand" },
         React.createElement(Row, { label: "Bestandsnaam", value: photo.filename }),
